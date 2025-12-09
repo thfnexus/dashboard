@@ -39,10 +39,11 @@ export async function GET() {
         if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
         // Extract teams from the nested structure
-        const teams = data?.map(item => ({
-            ...item.teams,
-            created_by_name: item.teams?.users?.name
-        })) || []
+        const teams = data?.map((item: any) => ({
+    ...item.teams,
+    created_by_name: item?.teams?.users?.[0]?.name || null
+})) || [];
+
 
         return NextResponse.json(teams)
     }
