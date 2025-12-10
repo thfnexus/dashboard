@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Loader2 } from "lucide-react"
 import { PlanSelector } from "@/components/plans/PlanSelector"
-import type { PlanId } from "@/lib/plans"
+import { type PlanId, SUBSCRIPTION_PLANS, getPlan } from "@/lib/plans"
 
 export default function RegisterPage() {
     const [step, setStep] = useState<1 | 2>(1)
@@ -17,7 +17,15 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
+    const searchParams = useSearchParams()
     const supabase = createClient()
+
+    useEffect(() => {
+        const planParam = searchParams.get('plan')
+        if (planParam && Object.keys(SUBSCRIPTION_PLANS).includes(planParam)) {
+            setSelectedPlan(planParam as PlanId)
+        }
+    }, [searchParams])
 
     const handleNext = (e: React.FormEvent) => {
         e.preventDefault()
@@ -35,13 +43,18 @@ export default function RegisterPage() {
         setError(null)
 
         try {
+            // Check plan pricing
+            const planDetails = getPlan(selectedPlan)
+            const isPaidPlan = planDetails.price > 0
+
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     data: {
                         name: name,
-                        plan: selectedPlan
+                        // Initially set as free if paid plan, so they aren't upgraded until payment
+                        plan: isPaidPlan ? 'free' : selectedPlan
                     }
                 }
             })
@@ -54,7 +67,11 @@ export default function RegisterPage() {
             if (data.user && !data.session) {
                 setError("Please check your email to confirm your account.")
             } else {
-                router.push("/dashboard")
+                if (isPaidPlan) {
+                    router.push(`/payment?plan=${selectedPlan}`)
+                } else {
+                    router.push("/dashboard")
+                }
                 router.refresh()
             }
 

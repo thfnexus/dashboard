@@ -14,7 +14,8 @@ import {
     Settings,
     Upload,
     LogOut,
-    UserCircle
+    UserCircle,
+    CreditCard
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -57,6 +58,11 @@ const sidebarItems = [
         icon: Upload,
     },
     {
+        title: "Pricing",
+        href: "/pricing",
+        icon: CreditCard,
+    },
+    {
         title: "Settings",
         href: "/dashboard/settings",
         icon: Settings,
@@ -67,6 +73,7 @@ export function Sidebar({ className, onNavigate }: { className?: string, onNavig
     const pathname = usePathname()
     const router = useRouter()
     const supabase = createClient()
+    const [isLoggedIn, setIsLoggedIn] = useState(false)
     const [role, setRole] = useState<string | null>(null)
     const [userEmail, setUserEmail] = useState<string>('')
     const [userName, setUserName] = useState<string>('')
@@ -75,6 +82,7 @@ export function Sidebar({ className, onNavigate }: { className?: string, onNavig
         const checkRole = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             if (user) {
+                setIsLoggedIn(true)
                 // Set user email
                 setUserEmail(user.email || '')
 
@@ -88,6 +96,8 @@ export function Sidebar({ className, onNavigate }: { className?: string, onNavig
                 // Fetch role from database
                 const { data } = await supabase.from('users').select('role').eq('id', user.id).single()
                 setRole(data?.role || 'user')
+            } else {
+                setIsLoggedIn(false)
             }
         }
         checkRole()
@@ -96,6 +106,7 @@ export function Sidebar({ className, onNavigate }: { className?: string, onNavig
     const handleLogout = async () => {
         await supabase.auth.signOut()
         router.push("/login")
+        router.refresh()
     }
 
     const filteredItems = sidebarItems.filter(item => {
@@ -141,20 +152,32 @@ export function Sidebar({ className, onNavigate }: { className?: string, onNavig
             </div>
 
             <div className="p-4 border-t">
-                <div className="flex items-center gap-3 px-3 py-2 mb-2">
-                    <UserCircle className="w-8 h-8 text-muted-foreground" />
-                    <div className="text-sm">
-                        <p className="font-medium">{userName || 'User'}</p>
-                        <p className="text-xs text-muted-foreground">{userEmail || 'user@example.com'}</p>
-                    </div>
-                </div>
-                <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                    <LogOut className="w-4 h-4" />
-                    Logout
-                </button>
+                {isLoggedIn ? (
+                    <>
+                        <div className="flex items-center gap-3 px-3 py-2 mb-2">
+                            <UserCircle className="w-8 h-8 text-muted-foreground" />
+                            <div className="text-sm">
+                                <p className="font-medium">{userName || 'User'}</p>
+                                <p className="text-xs text-muted-foreground truncate max-w-[140px]" title={userEmail}>{userEmail || 'user@example.com'}</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            Logout
+                        </button>
+                    </>
+                ) : (
+                    <Link
+                        href="/login"
+                        className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+                    >
+                        <LogOut className="w-4 h-4 rotate-180" />
+                        Login
+                    </Link>
+                )}
                 <div className="mt-4 px-3">
                     <ThemeToggle />
                 </div>
